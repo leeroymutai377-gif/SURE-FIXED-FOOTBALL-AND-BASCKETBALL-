@@ -7,66 +7,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 
+# ---------- Page Config ----------
 st.set_page_config(
-    page_title="Multi-Sport Predictor Pro",
-    page_icon="🏆",
+    page_title="AI Multi-Sport Predictor",
+    page_icon="🤖",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-PAYPAL_CLIENT_ID = "sb"  
-
-def render_paywall():
-    html_code = f"""
-    <div style="text-align: center; padding: 24px; border: 2px solid #3b82f6; border-radius: 16px; background-color: #f8fafc; margin-bottom: 20px;">
-        <h3 style="color: #1e3a8a; margin-top: 0;">🔑 Premium Analytics Locked</h3>
-        <p style="color: #475569; font-size: 16px;">Get full 24-hour unconstrained access to both <b>Football</b> and <b>Basketball</b> mathematical predictions.</p>
-        <div style="font-size: 24px; font-weight: bold; color: #1e40af; margin: 12px 0;">Daily Pass: $5.00 USD</div>
-        <div id="paypal-button-container"></div>
-    </div>
-    
-    <script>
-        if (!window.paypalScriptLoaded) {{
-            var script = document.createElement('script');
-            script.src = "https://paypal.com{PAYPAL_CLIENT_ID}&currency=USD";
-            script.onload = function() {{ renderPaypalButtons(); }};
-            document.head.appendChild(script);
-            window.paypalScriptLoaded = true;
-        }} else {{
-            renderPaypalButtons();
-        }}
-
-        function renderPaypalButtons() {{
-            document.getElementById('paypal-button-container').innerHTML = '';
-            paypal.Buttons({{
-                style: {{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay' }},
-                createOrder: function(data, actions) {{
-                    return actions.order.create({{
-                        purchase_units: [{{ amount: {{ value: '5.00', currency_code: 'USD' }} }}]
-                    }});
-                }},
-                onApprove: function(data, actions) {{
-                    return actions.order.capture().then(function(details) {{
-                        window.parent.postMessage({{
-                            type: 'streamlit:setComponentValue',
-                            value: {{ status: 'PAID', payer: details.payer.name.given_name }}
-                        }}, '*');
-                    }});
-                }}
-            }}).render('#paypal-button-container');
-        }}
-    </script>
-    """
-    import streamlit.components.v1 as components
-    return components.html(html_code, height=280)
-
-if "unlocked" not in st.session_state:
-    st.session_state.unlocked = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
-
+# ---------- Core AI Feature & Prediction Engine ----------
 class EloEngine:
-    def __init__(self, k=22, hca=90):
+    def __init__(self, k=24, hca=95):
         self.k = k
         self.hca = hca
         self.ratings = defaultdict(lambda: 1500.0)
@@ -112,11 +63,11 @@ class FeatureBuilder:
         self.last_date[home] = date
         self.last_date[away] = date
 
-class Ensemble:
+class AIEnsemble:
     def __init__(self):
         self.scaler = StandardScaler()
-        self.lr = LogisticRegression(max_iter=1500, C=0.5)
-        self.gb = GradientBoostingClassifier(n_estimators=200, max_depth=3, learning_rate=0.05, random_state=42)
+        self.lr = LogisticRegression(max_iter=2000, C=0.7)
+        self.gb = GradientBoostingClassifier(n_estimators=300, max_depth=4, learning_rate=0.04, random_state=42)
 
     def fit(self, X, y):
         Xs = self.scaler.fit_transform(X)
@@ -127,7 +78,7 @@ class Ensemble:
         Xs = self.scaler.transform(X)
         p_lr = self.lr.predict_proba(Xs)[:, 1]
         p_gb = self.gb.predict_proba(Xs)[:, 1]
-        return 0.40 * elo_probs + 0.30 * p_lr + 0.30 * p_gb
+        return 0.35 * elo_probs + 0.35 * p_lr + 0.30 * p_gb
 
 def run_model_training(df):
     df = df.copy()
@@ -148,7 +99,7 @@ def run_model_training(df):
         elo.update(h, a, result == 1, r["home_score"] - r["away_score"])
         fb.add(h, a, r["home_score"], r["away_score"], r["date"])
 
-    model = Ensemble()
+    model = AIEnsemble()
     model.fit(np.asarray(X), np.asarray(y))
     return model, elo, fb, df["date"].max()
 
@@ -174,10 +125,11 @@ def load_fixed_historical_database(sport_selection):
             
     return pd.DataFrame(data, columns=["date", "home", "away", "home_score", "away_score"])
 
+# ---------- Layout & UI Elements ----------
 st.markdown("""
 <style>
 .block-container {max-width: 800px; padding-top: 1.5rem;}
-.header-box { padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem; background: linear-gradient(135deg, #1e293b, #3b82f6); color: white; text-align: center; }
+.header-box { padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem; background: linear-gradient(135deg, #0f172a, #2563eb); color: white; text-align: center; }
 .header-box h1 {margin: 0; font-size: 2.1rem;}
 .header-box p {margin: 0.5rem 0 0; opacity: 0.9;}
 .output-card { padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-top: 1rem; }
@@ -188,8 +140,8 @@ st.markdown("""
 
 st.markdown("""
 <div class="header-box">
-  <h1>🏆 Pro Multi-Sport Predictor</h1>
-  <p>Secure Enterprise Grade Analytics & Predictions</p>
+  <h1>🏆 Pro AI Multi-Sport Predictor</h1>
+  <p>Ensemble Intelligence & Mathematical Modeling Engine</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -198,29 +150,17 @@ sport_mode = st.radio("Select Prediction Arena:", ["Football ⚽", "Basketball �
 historical_df = load_fixed_historical_database(sport_mode)
 all_teams = sorted(list(set(historical_df["home"]) | set(historical_df["away"])))
 
-pay_status = render_paywall()
-
-if pay_status and isinstance(pay_status, dict) and pay_status.get("status") == "PAID":
-    st.session_state.unlocked = True
-    st.session_state.username = pay_status.get("payer", "Valued Client")
-
-if not st.session_state.unlocked:
-    st.warning("🔒 Features Locked. Complete the PayPal transaction above to see premium analytics.")
-    st.stop()
-
-st.success(f"🎟️ Access Unlocked. Welcome, {st.session_state.username}! Premium system dataset is ready.")
-
 model, elo, fb, max_date = run_model_training(historical_df)
 
-st.markdown("### 🔮 Generate Matchup Probabilities")
+st.markdown("### 🔮 AI Matchup Simulation")
 c1, c2 = st.columns(2)
 with c1:
-    home_selection = st.selectbox("Home Team Asset", all_teams, index=0)
+    home_selection = st.selectbox("Home Team", all_teams, index=0)
 with c2:
     away_filter = [t for t in all_teams if t != home_selection]
-    away_selection = st.selectbox("Away Team Asset", away_filter, index=0)
+    away_selection = st.selectbox("Away Team", away_filter, index=0)
 
-if st.button("Calculate Matchup Verdict", type="primary", use_container_width=True):
+if st.button("Generate Deep AI Insights", type="primary", use_container_width=True):
     features_dict = fb.features(home_selection, away_selection, max_date)
     elo_prob = elo.expected(home_selection, away_selection)
     
@@ -231,10 +171,20 @@ if st.button("Calculate Matchup Verdict", type="primary", use_container_width=Tr
     
     st.markdown(f"""
     <div class="output-card">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; color: #475569;">📊 CALCULATED AI PROBABILITIES</div>
         <div class="team-line"><span>🏠 <b>{home_selection}</b> (Home)</span><span class="prob-val">{h_prob*100:.1f}%</span></div>
         <div class="team-line"><span>✈️ <b>{away_selection}</b> (Away)</span><span class="prob-val">{a_prob*100:.1f}%</span></div>
     </div>
     """, unsafe_allow_html=True)
-    st.info(f"🎯 Recommended Side Selection: **{verdict_side}** (Model Separation Edge: {edge_index:.0f}/100)")
+    
+    st.markdown("### 🧠 AI Analysis Insights")
+    st.info(f"🎯 **Recommended Play**: Backing **{verdict_side}** with an edge score of **{edge_index:.1f}/100**.")
+    
+    if edge_index > 30:
+        st.success(f"📈 **AI Trend Analysis**: Strong predictive confidence found. High trend variance leverage favoring {verdict_side}.")
+    elif edge_index > 10:
+        st.warning("⚖️ **AI Trend Analysis**: Moderate statistical separation detected. Balanced match context with a slight stylistic advantage.")
+    else:
+        st.error("🔄 **AI Trend Analysis**: Critical dead-heat warning. Close model alignment—margins are structurally narrow.")
 
-st.caption("🛡️ Administrative Policy: User file uploader interface elements have been removed from this engine.")
+st.caption("🛡️ Administrative Policy: User file uploader interface elements remain strictly deactivated inside this environment.")
